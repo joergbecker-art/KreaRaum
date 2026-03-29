@@ -1,0 +1,1355 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KreaRaum — Jörg Becker · Malerei & Raum</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400;1,700&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Oswald:wght@200;300;400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #0d0b09;
+    --parchment: #f0e8d5;
+    --gold: #c09a50;
+    --gold-light: #e8c97a;
+    --rust: #8b3a1a;
+    --slate: #1e2a35;
+    --ocean: #1a3a4a;
+    --fog: #c8cdd4;
+    --white: #faf6ef;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--ink);
+    color: var(--parchment);
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    cursor: none;
+    overflow-x: hidden;
+  }
+
+  /* Custom cursor */
+  .cursor {
+    width: 12px; height: 12px;
+    background: var(--gold);
+    border-radius: 50%;
+    position: fixed;
+    pointer-events: none;
+    z-index: 9999;
+    transform: translate(-50%, -50%);
+    transition: transform 0.1s, width 0.3s, height 0.3s, background 0.3s;
+    mix-blend-mode: difference;
+  }
+  .cursor-ring {
+    width: 36px; height: 36px;
+    border: 1px solid var(--gold);
+    border-radius: 50%;
+    position: fixed;
+    pointer-events: none;
+    z-index: 9998;
+    transform: translate(-50%, -50%);
+    transition: transform 0.15s ease-out, width 0.3s, height 0.3s;
+    opacity: 0.6;
+  }
+
+  /* Grain overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    opacity: 0.35;
+    pointer-events: none;
+    z-index: 9000;
+  }
+
+  /* ─── NAVIGATION ─── */
+  nav {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 1000;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 24px 48px;
+    background: linear-gradient(to bottom, rgba(13,11,9,0.95), transparent);
+  }
+
+  .nav-logo {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.1rem;
+    font-weight: 900;
+    letter-spacing: 0.12em;
+    color: var(--gold);
+    text-transform: uppercase;
+    text-decoration: none;
+  }
+  .nav-logo span {
+    font-style: italic;
+    font-weight: 400;
+    color: var(--parchment);
+    font-size: 0.75rem;
+    display: block;
+    letter-spacing: 0.25em;
+    margin-top: 2px;
+  }
+
+  .nav-links {
+    display: flex;
+    gap: 40px;
+    list-style: none;
+  }
+  .nav-links a {
+    font-family: 'Oswald', sans-serif;
+    font-weight: 200;
+    font-size: 0.78rem;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--fog);
+    text-decoration: none;
+    position: relative;
+    transition: color 0.3s;
+  }
+  .nav-links a::after {
+    content: '';
+    position: absolute;
+    bottom: -4px; left: 0;
+    width: 0; height: 1px;
+    background: var(--gold);
+    transition: width 0.3s;
+  }
+  .nav-links a:hover { color: var(--gold); }
+  .nav-links a:hover::after { width: 100%; }
+
+  /* ─── HERO ─── */
+  #hero {
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .hero-bg {
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 80% 60% at 70% 40%, rgba(26,58,74,0.5) 0%, transparent 60%),
+      radial-gradient(ellipse 50% 80% at 10% 80%, rgba(139,58,26,0.2) 0%, transparent 50%),
+      linear-gradient(160deg, #0d0b09 0%, #111820 50%, #0d0b09 100%);
+  }
+
+  /* animated paint strokes */
+  .paint-stroke {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(80px);
+    opacity: 0;
+    animation: paintFloat 12s ease-in-out infinite;
+  }
+  .ps1 { width: 600px; height: 300px; background: rgba(192,154,80,0.12); top: 10%; left: -5%; animation-delay: 0s; }
+  .ps2 { width: 400px; height: 400px; background: rgba(26,58,74,0.4); top: 40%; right: -10%; animation-delay: 3s; }
+  .ps3 { width: 300px; height: 200px; background: rgba(139,58,26,0.25); bottom: 15%; left: 30%; animation-delay: 6s; }
+
+  @keyframes paintFloat {
+    0%   { opacity: 0; transform: scale(0.8) translateY(20px); }
+    30%  { opacity: 1; }
+    70%  { opacity: 0.8; }
+    100% { opacity: 0; transform: scale(1.1) translateY(-20px); }
+  }
+
+  .hero-content {
+    position: relative;
+    text-align: center;
+    z-index: 2;
+    animation: heroReveal 1.8s cubic-bezier(0.16,1,0.3,1) forwards;
+    opacity: 0;
+  }
+  @keyframes heroReveal {
+    from { opacity: 0; transform: translateY(40px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .hero-eyebrow {
+    font-family: 'Oswald', sans-serif;
+    font-weight: 200;
+    font-size: 0.72rem;
+    letter-spacing: 0.4em;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin-bottom: 24px;
+  }
+
+  .hero-title {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(4rem, 10vw, 9rem);
+    font-weight: 900;
+    line-height: 0.88;
+    color: var(--white);
+    margin-bottom: 12px;
+  }
+  .hero-title em {
+    font-style: italic;
+    color: var(--gold);
+    display: block;
+  }
+
+  .hero-sub {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.3rem;
+    font-style: italic;
+    color: var(--fog);
+    margin: 28px 0 48px;
+    letter-spacing: 0.05em;
+  }
+
+  .hero-cta {
+    display: inline-flex;
+    gap: 20px;
+  }
+  .btn {
+    font-family: 'Oswald', sans-serif;
+    font-weight: 300;
+    font-size: 0.75rem;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    padding: 14px 36px;
+    text-decoration: none;
+    border: 1px solid;
+    transition: all 0.35s;
+  }
+  .btn-gold {
+    background: var(--gold);
+    border-color: var(--gold);
+    color: var(--ink);
+  }
+  .btn-gold:hover {
+    background: transparent;
+    color: var(--gold);
+  }
+  .btn-outline {
+    background: transparent;
+    border-color: rgba(200,205,212,0.4);
+    color: var(--fog);
+  }
+  .btn-outline:hover {
+    border-color: var(--gold);
+    color: var(--gold);
+  }
+
+  .hero-scroll {
+    position: absolute;
+    bottom: 40px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    opacity: 0.5;
+    animation: scrollBob 2s ease-in-out infinite;
+  }
+  @keyframes scrollBob {
+    0%, 100% { transform: translateX(-50%) translateY(0); }
+    50%       { transform: translateX(-50%) translateY(8px); }
+  }
+  .scroll-line {
+    width: 1px; height: 60px;
+    background: linear-gradient(to bottom, transparent, var(--gold));
+  }
+  .scroll-label {
+    font-family: 'Oswald', sans-serif;
+    font-size: 0.6rem;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: var(--gold);
+    writing-mode: vertical-rl;
+    transform: rotate(180deg);
+  }
+
+  /* ─── SECTIONS ─── */
+  section { position: relative; }
+
+  .section-inner {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 120px 48px;
+  }
+
+  .section-label {
+    font-family: 'Oswald', sans-serif;
+    font-weight: 200;
+    font-size: 0.68rem;
+    letter-spacing: 0.45em;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .section-label::before {
+    content: '';
+    width: 40px; height: 1px;
+    background: var(--gold);
+  }
+
+  .section-title {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(2.5rem, 5vw, 4.5rem);
+    font-weight: 700;
+    line-height: 1.05;
+    margin-bottom: 32px;
+  }
+  .section-title em {
+    font-style: italic;
+    color: var(--gold);
+  }
+
+  /* ─── ÜBER / ARTIST ─── */
+  #ueber {
+    background: linear-gradient(180deg, var(--ink) 0%, #111820 100%);
+  }
+
+  .artist-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 80px;
+    align-items: center;
+    margin-top: 60px;
+  }
+
+  .artist-portrait {
+    position: relative;
+  }
+  .portrait-frame {
+    aspect-ratio: 3/4;
+    background: linear-gradient(135deg, var(--slate), var(--ocean));
+    position: relative;
+    overflow: hidden;
+  }
+  .portrait-frame::before {
+    content: 'J';
+    font-family: 'Playfair Display', serif;
+    font-size: 30vw;
+    font-weight: 900;
+    color: rgba(192,154,80,0.06);
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    line-height: 1;
+  }
+  .portrait-placeholder {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+  }
+  .portrait-icon {
+    width: 80px; height: 80px;
+    border-radius: 50%;
+    background: rgba(192,154,80,0.15);
+    border: 1px solid rgba(192,154,80,0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+  }
+  .portrait-note {
+    font-family: 'Cormorant Garamond', serif;
+    font-style: italic;
+    font-size: 0.9rem;
+    color: rgba(192,154,80,0.5);
+    text-align: center;
+    max-width: 200px;
+  }
+
+  .portrait-deco {
+    position: absolute;
+    top: -20px; right: -20px;
+    width: 120px; height: 120px;
+    border-top: 2px solid var(--gold);
+    border-right: 2px solid var(--gold);
+  }
+  .portrait-deco2 {
+    position: absolute;
+    bottom: -20px; left: -20px;
+    width: 120px; height: 120px;
+    border-bottom: 2px solid var(--gold);
+    border-left: 2px solid var(--gold);
+  }
+
+  .artist-text { }
+  .artist-quote {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.6rem;
+    font-style: italic;
+    line-height: 1.5;
+    color: var(--parchment);
+    border-left: 3px solid var(--gold);
+    padding-left: 28px;
+    margin-bottom: 40px;
+  }
+  .artist-bio {
+    font-size: 1.1rem;
+    line-height: 1.9;
+    color: var(--fog);
+    margin-bottom: 24px;
+  }
+  .artist-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 32px;
+  }
+  .tag {
+    font-family: 'Oswald', sans-serif;
+    font-weight: 200;
+    font-size: 0.65rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    padding: 6px 16px;
+    border: 1px solid rgba(192,154,80,0.35);
+    color: var(--gold);
+  }
+
+  /* ─── PORTFOLIO ─── */
+  #portfolio {
+    background: #0a0807;
+  }
+
+  .portfolio-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    margin-bottom: 60px;
+  }
+
+  .portfolio-filters {
+    display: flex;
+    gap: 24px;
+  }
+  .filter-btn {
+    font-family: 'Oswald', sans-serif;
+    font-weight: 200;
+    font-size: 0.7rem;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: var(--fog);
+    background: none;
+    border: none;
+    cursor: none;
+    padding: 4px 0;
+    border-bottom: 1px solid transparent;
+    transition: all 0.3s;
+  }
+  .filter-btn.active, .filter-btn:hover {
+    color: var(--gold);
+    border-bottom-color: var(--gold);
+  }
+
+  .portfolio-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 3px;
+  }
+
+  .work-card {
+    position: relative;
+    overflow: hidden;
+    cursor: none;
+  }
+  .work-card:nth-child(1) { grid-column: span 2; }
+  .work-card:nth-child(5) { grid-column: span 2; }
+
+  .work-img {
+    aspect-ratio: 4/3;
+    position: relative;
+    overflow: hidden;
+  }
+  .work-card:nth-child(1) .work-img,
+  .work-card:nth-child(5) .work-img { aspect-ratio: 16/9; }
+  .work-card:nth-child(2) .work-img,
+  .work-card:nth-child(4) .work-img { aspect-ratio: 3/4; }
+
+  .work-bg {
+    width: 100%; height: 100%;
+    transition: transform 0.7s cubic-bezier(0.16,1,0.3,1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Playfair Display', serif;
+    font-size: 5rem;
+    font-weight: 900;
+    color: rgba(255,255,255,0.04);
+  }
+  .work-card:hover .work-bg { transform: scale(1.05); }
+
+  /* Unique color per card */
+  .w1 { background: linear-gradient(135deg, #1a2535 0%, #2a4a5a 50%, #1a3525 100%); }
+  .w2 { background: linear-gradient(160deg, #2a1510 0%, #5a2510 60%, #3a1505 100%); }
+  .w3 { background: linear-gradient(200deg, #151a25 0%, #253050 50%, #101520 100%); }
+  .w4 { background: linear-gradient(135deg, #1a1510 0%, #3a2a10 50%, #2a1a05 100%); }
+  .w5 { background: linear-gradient(155deg, #0a1520 0%, #152535 40%, #1a3040 100%); }
+  .w6 { background: linear-gradient(135deg, #201510 0%, #402010 50%, #201008 100%); }
+
+  .work-overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to top, rgba(13,11,9,0.95) 0%, transparent 50%);
+    opacity: 0;
+    transition: opacity 0.4s;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    padding: 28px;
+  }
+  .work-card:hover .work-overlay { opacity: 1; }
+
+  .work-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: var(--white);
+    margin-bottom: 6px;
+  }
+  .work-meta {
+    font-family: 'Oswald', sans-serif;
+    font-weight: 200;
+    font-size: 0.68rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--gold);
+  }
+
+  /* Artwork icon placeholders */
+  .art-icon { font-size: 3rem; opacity: 0.15; }
+
+  /* ─── KREARAUM KONZEPT ─── */
+  #krearaum {
+    background: linear-gradient(135deg, #0d1520 0%, #111820 50%, #0d0b09 100%);
+    position: relative;
+    overflow: hidden;
+  }
+  #krearaum::before {
+    content: 'KreaRaum';
+    font-family: 'Playfair Display', serif;
+    font-size: 20vw;
+    font-weight: 900;
+    color: rgba(192,154,80,0.03);
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    white-space: nowrap;
+    pointer-events: none;
+  }
+
+  .konzept-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 2px;
+    margin-top: 60px;
+  }
+
+  .konzept-pillar {
+    background: rgba(255,255,255,0.02);
+    border: 1px solid rgba(192,154,80,0.15);
+    padding: 48px 36px;
+    position: relative;
+    transition: all 0.4s;
+  }
+  .konzept-pillar:hover {
+    background: rgba(192,154,80,0.05);
+    border-color: rgba(192,154,80,0.4);
+    transform: translateY(-4px);
+  }
+
+  .pillar-number {
+    font-family: 'Playfair Display', serif;
+    font-size: 5rem;
+    font-weight: 900;
+    color: rgba(192,154,80,0.12);
+    line-height: 1;
+    margin-bottom: 20px;
+  }
+  .pillar-icon {
+    font-size: 2rem;
+    margin-bottom: 20px;
+    display: block;
+  }
+  .pillar-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.6rem;
+    font-weight: 700;
+    font-style: italic;
+    color: var(--gold);
+    margin-bottom: 16px;
+  }
+  .pillar-text {
+    font-size: 1rem;
+    line-height: 1.85;
+    color: var(--fog);
+  }
+
+  .konzept-vision {
+    margin-top: 80px;
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 60px;
+    align-items: center;
+    padding: 60px;
+    border: 1px solid rgba(192,154,80,0.2);
+    background: rgba(192,154,80,0.03);
+  }
+  .vision-quote {
+    font-family: 'Playfair Display', serif;
+    font-size: 2rem;
+    font-style: italic;
+    line-height: 1.4;
+    color: var(--parchment);
+  }
+  .vision-quote strong {
+    color: var(--gold);
+    font-style: normal;
+  }
+  .vision-details {
+    border-left: 1px solid rgba(192,154,80,0.3);
+    padding-left: 40px;
+  }
+  .vision-detail-item {
+    margin-bottom: 24px;
+  }
+  .vdi-label {
+    font-family: 'Oswald', sans-serif;
+    font-weight: 200;
+    font-size: 0.65rem;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin-bottom: 6px;
+  }
+  .vdi-value {
+    font-size: 1rem;
+    color: var(--parchment);
+  }
+
+  /* ─── AUSSTELLUNGEN ─── */
+  #ausstellungen {
+    background: var(--ink);
+  }
+
+  .events-list {
+    margin-top: 60px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .event-item {
+    display: grid;
+    grid-template-columns: 140px 1fr auto;
+    align-items: center;
+    gap: 48px;
+    padding: 36px 40px;
+    background: rgba(255,255,255,0.02);
+    border: 1px solid rgba(192,154,80,0.1);
+    transition: all 0.35s;
+    position: relative;
+    overflow: hidden;
+  }
+  .event-item::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 3px;
+    background: var(--gold);
+    transform: scaleY(0);
+    transition: transform 0.35s;
+  }
+  .event-item:hover {
+    background: rgba(192,154,80,0.04);
+    border-color: rgba(192,154,80,0.3);
+  }
+  .event-item:hover::before { transform: scaleY(1); }
+
+  .event-date {
+    font-family: 'Playfair Display', serif;
+    font-weight: 700;
+    font-style: italic;
+  }
+  .event-day {
+    font-size: 2.8rem;
+    color: var(--gold);
+    line-height: 1;
+  }
+  .event-month {
+    font-family: 'Oswald', sans-serif;
+    font-weight: 200;
+    font-size: 0.7rem;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: var(--fog);
+    margin-top: 4px;
+  }
+
+  .event-info { }
+  .event-status {
+    display: inline-block;
+    font-family: 'Oswald', sans-serif;
+    font-weight: 300;
+    font-size: 0.6rem;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    padding: 3px 10px;
+    margin-bottom: 10px;
+  }
+  .status-live { border: 1px solid #4a9; color: #4a9; }
+  .status-upcoming { border: 1px solid var(--gold); color: var(--gold); }
+
+  .event-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: var(--white);
+    margin-bottom: 8px;
+  }
+  .event-location {
+    font-family: 'Oswald', sans-serif;
+    font-weight: 200;
+    font-size: 0.72rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--fog);
+  }
+
+  .event-action .btn {
+    font-size: 0.65rem;
+    padding: 10px 24px;
+  }
+
+  /* ─── KONTAKT ─── */
+  #kontakt {
+    background: linear-gradient(180deg, #0a0807 0%, #0d1218 100%);
+  }
+
+  .contact-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 80px;
+    margin-top: 60px;
+  }
+
+  .contact-info { }
+  .contact-tagline {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.8rem;
+    font-style: italic;
+    line-height: 1.5;
+    color: var(--parchment);
+    margin-bottom: 48px;
+  }
+
+  .contact-items {
+    display: flex;
+    flex-direction: column;
+    gap: 28px;
+  }
+  .contact-item {
+    display: flex;
+    gap: 20px;
+    align-items: flex-start;
+  }
+  .ci-icon {
+    width: 42px; height: 42px;
+    border: 1px solid rgba(192,154,80,0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+    flex-shrink: 0;
+    color: var(--gold);
+  }
+  .ci-label {
+    font-family: 'Oswald', sans-serif;
+    font-weight: 200;
+    font-size: 0.65rem;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin-bottom: 4px;
+  }
+  .ci-value {
+    font-size: 1.05rem;
+    color: var(--parchment);
+  }
+  .ci-value a {
+    color: inherit;
+    text-decoration: none;
+    border-bottom: 1px solid transparent;
+    transition: border-color 0.3s;
+  }
+  .ci-value a:hover { border-bottom-color: var(--gold); }
+
+  .contact-form { }
+  .form-group {
+    margin-bottom: 24px;
+  }
+  .form-label {
+    font-family: 'Oswald', sans-serif;
+    font-weight: 200;
+    font-size: 0.65rem;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: var(--gold);
+    display: block;
+    margin-bottom: 10px;
+  }
+  .form-input, .form-textarea {
+    width: 100%;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(192,154,80,0.2);
+    color: var(--parchment);
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1rem;
+    padding: 14px 18px;
+    transition: border-color 0.3s;
+    outline: none;
+    cursor: none;
+  }
+  .form-input:focus, .form-textarea:focus {
+    border-color: var(--gold);
+  }
+  .form-textarea {
+    height: 130px;
+    resize: none;
+  }
+  .form-input::placeholder, .form-textarea::placeholder {
+    color: rgba(200,205,212,0.3);
+  }
+
+  /* ─── FOOTER ─── */
+  footer {
+    border-top: 1px solid rgba(192,154,80,0.15);
+    padding: 40px 48px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #09070605;
+  }
+  .footer-logo {
+    font-family: 'Playfair Display', serif;
+    font-size: 1rem;
+    font-weight: 900;
+    color: var(--gold);
+    letter-spacing: 0.1em;
+  }
+  .footer-motte {
+    font-family: 'Cormorant Garamond', serif;
+    font-style: italic;
+    font-size: 0.9rem;
+    color: rgba(200,205,212,0.4);
+    letter-spacing: 0.05em;
+  }
+  .footer-copy {
+    font-family: 'Oswald', sans-serif;
+    font-weight: 200;
+    font-size: 0.65rem;
+    letter-spacing: 0.2em;
+    color: rgba(200,205,212,0.3);
+  }
+
+  /* ─── SCROLL ANIMATIONS ─── */
+  .reveal {
+    opacity: 0;
+    transform: translateY(30px);
+    transition: opacity 0.8s ease, transform 0.8s ease;
+  }
+  .reveal.visible {
+    opacity: 1;
+    transform: none;
+  }
+  .reveal-delay-1 { transition-delay: 0.1s; }
+  .reveal-delay-2 { transition-delay: 0.2s; }
+  .reveal-delay-3 { transition-delay: 0.3s; }
+
+  /* ─── DIVIDER ─── */
+  .gold-divider {
+    width: 60px; height: 1px;
+    background: var(--gold);
+    margin: 40px 0;
+  }
+
+  @media (max-width: 900px) {
+    nav { padding: 20px 24px; }
+    .nav-links { gap: 24px; }
+    .section-inner { padding: 80px 24px; }
+    .artist-grid, .contact-grid { grid-template-columns: 1fr; gap: 40px; }
+    .konzept-grid { grid-template-columns: 1fr; }
+    .konzept-vision { grid-template-columns: 1fr; }
+    .portfolio-grid { grid-template-columns: 1fr 1fr; }
+    .work-card:nth-child(1), .work-card:nth-child(5) { grid-column: span 2; }
+    .event-item { grid-template-columns: 80px 1fr; gap: 24px; }
+    .event-action { display: none; }
+    .hero-title { font-size: clamp(3rem, 12vw, 6rem); }
+    footer { flex-direction: column; gap: 16px; text-align: center; }
+  }
+</style>
+</head>
+<body>
+
+<div class="cursor" id="cursor"></div>
+<div class="cursor-ring" id="cursorRing"></div>
+
+<!-- ─── NAVIGATION ─── -->
+<nav>
+  <a href="#hero" class="nav-logo">
+    KreaRaum
+    <span>Alles unter einer Mütze</span>
+  </a>
+  <ul class="nav-links">
+    <li><a href="#ueber">Künstler</a></li>
+    <li><a href="#portfolio">Werke</a></li>
+    <li><a href="#krearaum">KreaRaum</a></li>
+    <li><a href="#ausstellungen">Ausstellungen</a></li>
+    <li><a href="#buch">Buch</a></li>
+    <li><a href="#kontakt">Kontakt</a></li>
+  </ul>
+</nav>
+
+<!-- ─── HERO ─── -->
+<section id="hero">
+  <div class="hero-bg">
+    <div class="paint-stroke ps1"></div>
+    <div class="paint-stroke ps2"></div>
+    <div class="paint-stroke ps3"></div>
+  </div>
+  <div class="hero-content">
+    <div class="hero-eyebrow">Bad Doberan · 2026</div>
+    <h1 class="hero-title">
+      Jörg<br>
+      <em>Becker</em>
+    </h1>
+    <p class="hero-sub">Malerei & Raum — zwischen Chaos und Neubeginn</p>
+    <div class="hero-cta">
+      <a href="#portfolio" class="btn btn-gold">Werke entdecken</a>
+      <a href="#krearaum" class="btn btn-outline">KreaRaum</a>
+    </div>
+  </div>
+  <div class="hero-scroll">
+    <div class="scroll-line"></div>
+    <span class="scroll-label">Scroll</span>
+  </div>
+</section>
+
+<!-- ─── ÜBER ─── -->
+<section id="ueber">
+  <div class="section-inner">
+    <div class="section-label reveal">Über den Künstler</div>
+    <div class="artist-grid">
+      <div class="artist-portrait reveal">
+        <div class="portrait-frame">
+          <div class="portrait-placeholder">
+            <div class="portrait-icon">🎨</div>
+            <p class="portrait-note">Foto hier einfügen</p>
+          </div>
+        </div>
+        <div class="portrait-deco"></div>
+        <div class="portrait-deco2"></div>
+      </div>
+      <div class="artist-text">
+        <h2 class="section-title reveal">Zwischen<br><em>Chaos &amp; Neubeginn</em></h2>
+        <blockquote class="artist-quote reveal reveal-delay-1">
+          „Meine Malerei beginnt nicht auf der Leinwand, sondern in einem Einschnitt meines Lebens."
+        </blockquote>
+        <p class="artist-bio reveal reveal-delay-2">
+          Nach meiner Herztransplantation stand ich vor der Frage, wie ich wieder Zugang zu mir selbst finde. Die Kunst wurde für mich zu einem Weg zurück — und zu einer Möglichkeit, das auszudrücken, wofür mir die Worte fehlten. Was vorher als Selbstverständlichkeit galt — Herzschlag, Atem, Bewegung — wurde plötzlich zum Gegenstand des Staunens.
+        </p>
+        <p class="artist-bio reveal reveal-delay-2">
+          Ich arbeite mit Pigmenten, Pinseln, Spachteln und Schwämmen — oft intuitiv, ohne festgelegten Plan. Dabei entstehen abstrakte Bildräume, in denen sich immer wieder maritime Motive zeigen: Leuchttürme, Segelboote, Horizonte. Sie sind für mich innere Bilder — Zeichen für Orientierung und das Weitergehen, auch wenn der Weg unklar ist. Die Serie <em>„Das Zwischen"</em> zieht sich als roter Faden durch mein gesamtes Werk.
+        </p>
+        <p class="artist-bio reveal reveal-delay-2" style="font-style:italic; color: var(--parchment); border-left: 2px solid var(--gold); padding-left: 20px; margin-top: 8px;">
+          „Gute Kunst braucht keine Erklärung — sie braucht nur jemanden, der stehen bleibt."
+        </p>
+        <div class="gold-divider reveal reveal-delay-3"></div>
+        <div class="artist-tags reveal reveal-delay-3">
+          <span class="tag">Acryl</span>
+          <span class="tag">Mixed Media</span>
+          <span class="tag">Relief</span>
+          <span class="tag">Skulptur</span>
+          <span class="tag">Buchobjekte</span>
+          <span class="tag">Das Zwischen</span>
+          <span class="tag">Maritime Motive</span>
+          <span class="tag">Inklusion & Kunst</span>
+          <span class="tag">Herztransplantation</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─── PORTFOLIO ─── -->
+<section id="portfolio">
+  <div class="section-inner">
+    <div class="portfolio-header reveal">
+      <div>
+        <div class="section-label">Portfolio</div>
+        <h2 class="section-title">Ausgewählte<br><em>Werke</em></h2>
+      </div>
+      <div class="portfolio-filters">
+        <button class="filter-btn active" onclick="setFilter(this,'alle')">Alle</button>
+        <button class="filter-btn" onclick="setFilter(this,'maritim')">Maritim</button>
+        <button class="filter-btn" onclick="setFilter(this,'abstrakt')">Abstrakt</button>
+        <button class="filter-btn" onclick="setFilter(this,'figurativ')">Figurativ</button>
+      </div>
+    </div>
+
+    <div class="portfolio-grid reveal">
+      <div class="work-card">
+        <div class="work-img">
+          <div class="work-bg w1"><span class="art-icon">🌊</span></div>
+          <div class="work-overlay">
+            <div class="work-title">Unbeirrbar</div>
+            <div class="work-meta">Acryl auf Leinwand · 50 × 70 cm · 2024</div>
+          </div>
+        </div>
+      </div>
+      <div class="work-card">
+        <div class="work-img">
+          <div class="work-bg w2"><span class="art-icon">🔥</span></div>
+          <div class="work-overlay">
+            <div class="work-title">Burning Horizon</div>
+            <div class="work-meta">Mixed Media · 60 × 80 cm · 2025</div>
+          </div>
+        </div>
+      </div>
+      <div class="work-card">
+        <div class="work-img">
+          <div class="work-bg w3"><span class="art-icon">⭕</span></div>
+          <div class="work-overlay">
+            <div class="work-title">Das Zwischen I</div>
+            <div class="work-meta">Acryl auf Leinwand · 70 × 70 cm · 2024</div>
+          </div>
+        </div>
+      </div>
+      <div class="work-card">
+        <div class="work-img">
+          <div class="work-bg w4"><span class="art-icon">🌅</span></div>
+          <div class="work-overlay">
+            <div class="work-title">Zeitreise</div>
+            <div class="work-meta">Mixed Media · Dauerleihgabe</div>
+          </div>
+        </div>
+      </div>
+      <div class="work-card">
+        <div class="work-img">
+          <div class="work-bg w5"><span class="art-icon">⛵</span></div>
+          <div class="work-overlay">
+            <div class="work-title">Leuchtfeuer im Sturm</div>
+            <div class="work-meta">Acryl · 60 × 80 cm · 2025</div>
+          </div>
+        </div>
+      </div>
+      <div class="work-card">
+        <div class="work-img">
+          <div class="work-bg w6"><span class="art-icon">🦅</span></div>
+          <div class="work-overlay">
+            <div class="work-title">Viva Frida</div>
+            <div class="work-meta">Acryl · Figurativ · 2025</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─── KREARAUM ─── -->
+<section id="krearaum">
+  <div class="section-inner">
+    <div class="section-label reveal">Das Konzept</div>
+    <h2 class="section-title reveal">KreaRaum —<br><em>Alles unter einer Mütze</em></h2>
+    <p class="artist-bio reveal" style="max-width:740px;">
+      KreaRaum ist ein inklusiver Gemeinschaftsraum in Bad Doberan, der offenes Atelier, rotierende Galerie und Café unter einem Dach vereint. Hier entsteht Kunst, wird gezeigt und geteilt — von und für alle Menschen, ohne Schwellen, ohne Einschränkungen. Der Name ist Programm: Kreativität, Raum und Begegnung, <em>alles unter einer Mütze</em>.
+    </p>
+
+    <div class="konzept-grid">
+      <div class="konzept-pillar reveal">
+        <div class="pillar-number">01</div>
+        <span class="pillar-icon">🖌️</span>
+        <div class="pillar-title">Offenes Atelier</div>
+        <p class="pillar-text">Ein Arbeitsraum für alle — ob Anfänger oder erfahrene Künstler. Hier wird experimentiert, ausprobiert und gemeinsam geschaffen. Materialien, Werkzeug und Inspiration stehen bereit.</p>
+      </div>
+      <div class="konzept-pillar reveal reveal-delay-1">
+        <div class="pillar-number">02</div>
+        <span class="pillar-icon">🖼️</span>
+        <div class="pillar-title">Rotierende Galerie</div>
+        <p class="pillar-text">Wechselnde Ausstellungen zeigen Werke lokaler und regionaler Künstler. Der Raum gibt Kunst Sichtbarkeit — und schafft Begegnung zwischen Werk und Betrachter ohne Schwellen.</p>
+      </div>
+      <div class="konzept-pillar reveal reveal-delay-2">
+        <div class="pillar-number">03</div>
+        <span class="pillar-icon">☕</span>
+        <div class="pillar-title">Café & Begegnung</div>
+        <p class="pillar-text">Kunst braucht Gespräch. Das Café schafft einen niedrigschwelligen Zugang — Menschen bleiben, reden, entdecken. Kultur und Gemeinschaft wachsen zusammen.</p>
+      </div>
+    </div>
+
+    <div class="konzept-vision reveal">
+      <div class="vision-quote">
+        „Ein Ort, der keine Unterschiede kennt — nur <strong>Menschen und ihre Kreativität.</strong>"
+      </div>
+      <div class="vision-details">
+        <div class="vision-detail-item">
+          <div class="vdi-label">Ort</div>
+          <div class="vdi-value">Bad Doberan</div>
+        </div>
+        <div class="vision-detail-item">
+          <div class="vdi-label">Fokus</div>
+          <div class="vdi-value">Inklusion & Kunst</div>
+        </div>
+        <div class="vision-detail-item">
+          <div class="vdi-label">Netzwerk</div>
+          <div class="vdi-value">AIMused · Behindertenbeirat · AK Kunst, Kultur & Inklusion</div>
+        </div>
+        <div class="vision-detail-item">
+          <div class="vdi-label">Status</div>
+          <div class="vdi-value">In Entwicklung — Partner gesucht</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─── AUSSTELLUNGEN ─── -->
+<section id="ausstellungen">
+  <div class="section-inner">
+    <div class="section-label reveal">Ausstellungen & Events</div>
+    <h2 class="section-title reveal">Zeitplan<br><em>2026</em></h2>
+
+    <div class="events-list">
+      <div class="event-item reveal">
+        <div class="event-date">
+          <div class="event-day">28</div>
+          <div class="event-month">März 2026</div>
+        </div>
+        <div class="event-info">
+          <span class="event-status status-live">● Läuft jetzt</span>
+          <div class="event-title">Zeitreise von Jörg Becker</div>
+          <div class="event-location">KunstSchauFenster · Am Markt · Bad Doberan</div>
+        </div>
+        <div class="event-action">
+          <a href="#kontakt" class="btn btn-outline">Anfragen</a>
+        </div>
+      </div>
+
+      <div class="event-item reveal reveal-delay-1">
+        <div class="event-date">
+          <div class="event-day">12</div>
+          <div class="event-month">Sept. 2026</div>
+        </div>
+        <div class="event-info">
+          <span class="event-status status-upcoming">◇ Geplant</span>
+          <div class="event-title">DRINNEN DRAUSSEN EGAL</div>
+          <div class="event-location">Nicolaikirche · Rostock — Inklusive Gruppenausstellung</div>
+        </div>
+        <div class="event-action">
+          <a href="#kontakt" class="btn btn-outline">Vormerken</a>
+        </div>
+      </div>
+
+      <div class="event-item reveal reveal-delay-2">
+        <div class="event-date">
+          <div class="event-day">—</div>
+          <div class="event-month">Dauerhaft</div>
+        </div>
+        <div class="event-info">
+          <span class="event-status status-upcoming">◇ Dauerleihgabe</span>
+          <div class="event-title">Zeitreise (Werk)</div>
+          <div class="event-location">Micha's Personaltraining · Am Markt 7 · Bad Doberan</div>
+        </div>
+        <div class="event-action">
+          <a href="#kontakt" class="btn btn-outline">Besuchen</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─── BUCH ─── -->
+<section id="buch" style="background: linear-gradient(160deg, #0d1015 0%, #111820 60%, #0a0807 100%);">
+  <div class="section-inner">
+    <div class="section-label reveal">Das Buch</div>
+    <h2 class="section-title reveal"><em>Der fremde Rhythmus</em></h2>
+
+    <div style="display:grid; grid-template-columns: 1fr 1.6fr; gap: 80px; align-items:start; margin-top: 60px;">
+
+      <!-- Buchcover-Platzhalter -->
+      <div class="reveal" style="position:relative;">
+        <div style="aspect-ratio:2/3; background: linear-gradient(145deg, #1a2535, #0d1520); border:1px solid rgba(192,154,80,0.25); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:24px; padding:40px; text-align:center;">
+          <div style="font-family:'Playfair Display',serif; font-size:1.8rem; font-weight:900; font-style:italic; color:var(--gold); line-height:1.2;">Der fremde<br>Rhythmus</div>
+          <div style="width:40px;height:1px;background:var(--gold);"></div>
+          <div style="font-family:'Cormorant Garamond',serif; font-size:0.95rem; color:var(--fog); font-style:italic; line-height:1.6;">„Wie ein neues Herz<br>mein Leben neu ticken lehrte."</div>
+          <div style="width:40px;height:1px;background:rgba(192,154,80,0.4);"></div>
+          <div style="font-family:'Oswald',sans-serif; font-weight:200; font-size:0.7rem; letter-spacing:0.25em; color:rgba(192,154,80,0.6);">JÖRG BECKER</div>
+        </div>
+        <div style="position:absolute; top:-14px; right:-14px; width:70px; height:70px; border-top:2px solid var(--gold); border-right:2px solid var(--gold);"></div>
+        <div style="position:absolute; bottom:-14px; left:-14px; width:70px; height:70px; border-bottom:2px solid var(--gold); border-left:2px solid var(--gold);"></div>
+        <p style="font-family:'Oswald',sans-serif; font-size:0.62rem; letter-spacing:0.2em; color:rgba(200,205,212,0.3); text-align:center; margin-top:20px; text-transform:uppercase;">Cover-Illustration folgt</p>
+      </div>
+
+      <!-- Buchtext -->
+      <div class="reveal reveal-delay-1">
+        <blockquote class="artist-quote" style="font-size:1.3rem; margin-bottom:36px;">
+          „Manchmal stehe ich am Meer. Ich lege die Hand auf meine Brust. Es schlägt. Ein Herzschlag, der nicht meiner ist — und doch das Einzige, das mir gehört."
+        </blockquote>
+        <p class="artist-bio">
+          <em>Der fremde Rhythmus</em> ist keine Krankengeschichte. Es ist die Chronik einer radikalen Identitätstransformation — weg vom reinen Funktionieren hin zu einer achtsamen, neuen Existenz. Jörg Becker schreibt über zehn Monate Isolation im Krankenhaus während der Pandemie, über das Warten auf ein Spenderherz, und über das Leben danach, das kein Zurück zum Alten kennt.
+        </p>
+        <p class="artist-bio">
+          Das Buch verbindet persönliche Erinnerung mit psychologischer Reflexion über Generationenmuster, gesellschaftliches Engagement für Inklusion und die Rolle der Kunst als Heilungsweg. Beckers Stimme: kurze Sätze, radikale Ehrlichkeit, kein Pathos.
+        </p>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:24px; margin-top:36px;">
+          <div style="border:1px solid rgba(192,154,80,0.2); padding:24px 20px;">
+            <div style="font-family:'Oswald',sans-serif; font-weight:200; font-size:0.62rem; letter-spacing:0.3em; color:var(--gold); text-transform:uppercase; margin-bottom:10px;">Themen</div>
+            <div style="font-size:0.95rem; color:var(--fog); line-height:1.8;">Herztransplantation<br>Identität & Resilienz<br>Generationsmuster<br>Inklusion & Kunst<br>Organspende</div>
+          </div>
+          <div style="border:1px solid rgba(192,154,80,0.2); padding:24px 20px;">
+            <div style="font-family:'Oswald',sans-serif; font-weight:200; font-size:0.62rem; letter-spacing:0.3em; color:var(--gold); text-transform:uppercase; margin-bottom:10px;">Details</div>
+            <div style="font-size:0.95rem; color:var(--fog); line-height:1.8;">ca. 20.000–25.000 Wörter<br>Mit eingebetteten Kunstwerken<br>Memoir / Sachbuch<br>In Entwicklung · 2026</div>
+          </div>
+        </div>
+
+        <p style="font-family:'Playfair Display',serif; font-size:1.1rem; font-style:italic; color:var(--gold); margin-top:40px; line-height:1.6; border-left:2px solid var(--gold); padding-left:20px;">
+          „Er hat ein fremdes Herz. Und es ist das ehrlichste, das er je hatte."
+        </p>
+        <p style="font-family:'Oswald',sans-serif; font-weight:200; font-size:0.65rem; letter-spacing:0.2em; color:rgba(200,205,212,0.4); margin-top:8px; text-transform:uppercase;">Verlagsanfragen willkommen · <a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="dfb4adbabeadbeaab29fb0aaabb3b0b0b4f1bcb0b2">[email&#160;protected]</a></p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─── KONTAKT ─── -->
+<section id="kontakt">
+  <div class="section-inner">
+    <div class="section-label reveal">Kontakt</div>
+    <h2 class="section-title reveal">Galerie, Anfragen<br><em>&amp; Zusammenarbeit</em></h2>
+
+    <div class="contact-grid">
+      <div class="contact-info reveal">
+        <p class="contact-tagline">
+          Für Ankäufe, Ausstellungskooperationen, Workshops und alle Fragen rund um KreaRaum.
+        </p>
+        <div class="contact-items">
+          <div class="contact-item">
+            <div class="ci-icon">✉</div>
+            <div>
+              <div class="ci-label">Galerie & Anfragen</div>
+              <div class="ci-value"><a href="/cdn-cgi/l/email-protection#89e2fbece8fbe8fce4c9e6fcfde5e6e6e2a7eae6e4"><span class="__cf_email__" data-cfemail="711a0314100310041c311e04051d1e1e1a5f121e1c">[email&#160;protected]</span></a></div>
+            </div>
+          </div>
+          <div class="contact-item">
+            <div class="ci-icon">✉</div>
+            <div>
+              <div class="ci-label">Persönlich</div>
+              <div class="ci-value"><a href="/cdn-cgi/l/email-protection#046661676f61766e6b76633230446369656d682a676b69"><span class="__cf_email__" data-cfemail="3b595e58505e495154495c0d0f7b5c565a525715585456">[email&#160;protected]</span></a></div>
+            </div>
+          </div>
+          <div class="contact-item">
+            <div class="ci-icon">📍</div>
+            <div>
+              <div class="ci-label">Standort</div>
+              <div class="ci-value">Bad Doberan, Mecklenburg-Vorpommern</div>
+            </div>
+          </div>
+          <div class="contact-item">
+            <div class="ci-icon">🌐</div>
+            <div>
+              <div class="ci-label">Netzwerk</div>
+              <div class="ci-value">AIMused · Behindertenbeirat BD · Künstlerstammtisch</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="contact-form reveal reveal-delay-1">
+        <div class="form-group">
+          <label class="form-label">Name</label>
+          <input type="text" class="form-input" placeholder="Ihr Name">
+        </div>
+        <div class="form-group">
+          <label class="form-label">E-Mail</label>
+          <input type="email" class="form-input" placeholder="ihre@email.de">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Betreff</label>
+          <input type="text" class="form-input" placeholder="Anfrage, Kauf, Kooperation …">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Nachricht</label>
+          <textarea class="form-textarea" placeholder="Ihre Nachricht …"></textarea>
+        </div>
+        <a href="/cdn-cgi/l/email-protection#d8b3aabdb9aab9adb598b7adacb4b7b7b3f6bbb7b5" class="btn btn-gold" style="display:inline-block;margin-top:8px;">
+          Nachricht senden
+        </a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─── FOOTER ─── -->
+<footer>
+  <div class="footer-logo">KreaRaum</div>
+  <div class="footer-motte">Alles unter einer Mütze</div>
+  <div class="footer-copy">© Jörg Becker · Bad Doberan · 2026</div>
+</footer>
+
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
+  // Custom cursor
+  const cursor = document.getElementById('cursor');
+  const ring   = document.getElementById('cursorRing');
+  let mx = 0, my = 0, rx = 0, ry = 0;
+
+  document.addEventListener('mousemove', e => {
+    mx = e.clientX; my = e.clientY;
+    cursor.style.left = mx + 'px';
+    cursor.style.top  = my + 'px';
+  });
+
+  function animateRing() {
+    rx += (mx - rx) * 0.12;
+    ry += (my - ry) * 0.12;
+    ring.style.left = rx + 'px';
+    ring.style.top  = ry + 'px';
+    requestAnimationFrame(animateRing);
+  }
+  animateRing();
+
+  document.querySelectorAll('a, button').forEach(el => {
+    el.addEventListener('mouseenter', () => {
+      cursor.style.width = '20px';
+      cursor.style.height = '20px';
+      ring.style.width = '60px';
+      ring.style.height = '60px';
+    });
+    el.addEventListener('mouseleave', () => {
+      cursor.style.width = '12px';
+      cursor.style.height = '12px';
+      ring.style.width = '36px';
+      ring.style.height = '36px';
+    });
+  });
+
+  // Scroll reveal
+  const reveals = document.querySelectorAll('.reveal');
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        e.target.classList.add('visible');
+        observer.unobserve(e.tar
